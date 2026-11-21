@@ -1,0 +1,173 @@
+struct Parser {
+    input: [i32]
+    cursor: u64
+    error: i32
+    error_at: i32
+}
+
+export fn create() -> Parser {
+    return Parser(new [i32](4097), 0u64, 0, 0)
+}
+
+export fn input_buffer(parser: Parser) -> [i32] { return parser.input }
+export fn input_capacity(parser: Parser) -> i32 { return parser.input.length - 1 }
+export fn error_code(parser: Parser) -> i32 { return parser.error }
+export fn error_position(parser: Parser) -> i32 { return parser.error_at }
+
+fn fail(parser: Parser, code: i32, position: i32) -> f64 {
+    parser.error = code
+    parser.error_at = position
+    return 0.0
+}
+
+fn scan(input: [i32], offset: i32, symbol: i32) -> u64 {
+    var position = offset
+    var ch = symbol
+    while true {
+        if ch != 32 && ch != 9 && ch != 10 && ch != 13 { break }
+        position = position + 1
+        ch = input[position]
+    }
+    // Keep the position and its lookahead in one register-sized value.
+    return (u64(position) << 32u64) | u64(u32(ch))
+}
+
+fn position(cursor: u64) -> i32 {
+    return i32(cursor >> 32u64)
+}
+
+fn advance(input: [i32], cursor: u64) -> u64 {
+    let next = position(cursor) + 1
+    return scan(input, next, input[next])
+}
+
+fn is_digit(ch: i32) -> bool {
+    return u32(ch - 48) <= 9u32
+}
+
+fn long_fraction(input: [i32], start: i32, end: i32) -> f64 {
+    // Read from the right to avoid overflowing the decimal scale.
+    var fraction = 0.0
+    var index = end
+    while index > start {
+        index = index - 1
+        fraction = (fraction + f64(input[index] - 48)) / 10.0
+    }
+    return fraction
+}
+
+fn expression(parser: Parser, input: [i32], start: u64, depth: i32) -> f64 {
+    var cursor = start
+    var total = 0.0
+    var term = 0.0
+    var sum_op = 0
+    var sum_at = 0
+    var term_op = 0
+    var term_at = 0
+
+    while true {
+        var negative = false
+        while true {
+            let ch = i32(cursor)
+            if ch != 43 && ch != 45 { break } // + -
+            if ch == 45 { negative = !negative }
+            cursor = advance(input, cursor)
+        }
+
+        var value = 0.0
+        if i32(cursor) == 40 { // (
+            if depth == 64 { return fail(parser, 6, position(cursor)) }
+            value = expression(parser, input, advance(input, cursor), depth + 1)
+            if parser.error != 0 { return 0.0 }
+            cursor = parser.cursor
+            if i32(cursor) != 41 { return fail(parser, 2, position(cursor)) } // )
+            cursor = advance(input, cursor)
+        } else {
+            // Read the literal and keep the new position in this frame.
+            let start = position(cursor)
+            var index = start
+            var ch = i32(cursor)
+            while is_digit(ch) {
+                value = value * 10.0 + f64(ch - 48)
+                index = index + 1
+                ch = input[index]
+            }
+            var digits = index - start
+            if ch == 46 { // .
+                index = index + 1
+                ch = input[index]
+                let fraction_start = index
+                var fraction = 0.0
+                var scale = 1.0
+                while is_digit(ch) {
+                    fraction = fraction * 10.0 + f64(ch - 48)
+                    scale = scale * 10.0
+                    index = index + 1
+                    ch = input[index]
+                }
+                let fraction_digits = index - fraction_start
+                digits = digits + fraction_digits
+                if fraction_digits <= 300 {
+                    value = value + fraction / scale
+                } else {
+                    value = value + long_fraction(input, fraction_start, index)
+                }
+            }
+            if digits == 0 { return fail(parser, 1, start) }
+            // Any decimal with at most 308 digits is finite.
+            if digits > 308 && value - value != 0.0 { return fail(parser, 5, start) }
+            cursor = scan(input, index, ch)
+        }
+        if negative { value = -value }
+
+        // Finish multiplications and divisions before folding the term into the sum.
+        if term_op == 42 {
+            term = term * value
+        } else if term_op == 47 {
+            if value == 0.0 { return fail(parser, 4, term_at) }
+            term = term / value
+        } else {
+            term = value
+        }
+        if term - term != 0.0 { return fail(parser, 5, term_at) }
+
+        let op = i32(cursor)
+        if op == 42 || op == 47 {
+            term_op = op
+            term_at = position(cursor)
+            cursor = advance(input, cursor)
+            continue
+        }
+        if sum_op == 43 { total = total + term }
+        else if sum_op == 45 { total = total - term }
+        else { total = term }
+        if total - total != 0.0 { return fail(parser, 5, sum_at) }
+
+        if op != 43 && op != 45 {
+            parser.cursor = cursor
+            return total
+        }
+        sum_op = op
+        sum_at = position(cursor)
+        term_op = 0
+        cursor = advance(input, cursor)
+    }
+    return total
+}
+
+export fn evaluate(parser: Parser, length: i32) -> f64 {
+    parser.error = 0
+    parser.error_at = 0
+    let capacity = input_capacity(parser)
+    if length < 0 || length > capacity {
+        return fail(parser, 7, capacity)
+    }
+    // The extra array element lets the scanner detect the end without a separate length check.
+    let input = parser.input
+    input[length] = -1
+    let result = expression(parser, input, scan(input, 0, input[0]), 0)
+    if parser.error == 0 && position(parser.cursor) != length {
+        return fail(parser, 3, position(parser.cursor))
+    }
+    return result
+}

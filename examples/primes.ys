@@ -1,0 +1,28 @@
+fn is_prime(number: i32) -> bool {
+    if number < 2 {
+        return false
+    }
+
+    var divisor = 2
+    while divisor <= number / divisor {
+        if number % divisor == 0 {
+            return false
+        }
+        divisor = divisor + 1
+    }
+    return true
+}
+
+export fn count_primes(limit: i32) -> i32 {
+    var count = 0
+    for number in 2 .. limit {
+        if is_prime(number) {
+            count = count + 1
+        }
+    }
+    return count
+}
+
+fn main() {
+    print(count_primes(100))
+}

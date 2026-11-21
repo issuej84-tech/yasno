@@ -1,0 +1,111 @@
+extern "terrain" "changed" fn changed(faces: i32)
+
+struct Survey {
+    width: i32
+    height: i32
+    depth: i32
+    blocks: [i32]
+    faces: [i32]
+    face_count: i32
+}
+
+export fn create() -> Survey {
+    let width = 24
+    let height = 14
+    let depth = 24
+    let cells = width * height * depth
+    return Survey(width, height, depth, new [i32](cells), new [i32](cells * 6 * 5), 0)
+}
+
+fn hash(seed: i32, x: i32, z: i32) -> u32 {
+    let mixed = u32(seed) ^ (u32(x) * 0x9e37_79b1u32) ^ (u32(z) * 0x85eb_ca77u32)
+    let scramble = (mixed ^ (mixed >> 16u32)) * 0x7feb_352du32
+    return scramble ^ (scramble >> 15u32)
+}
+
+fn height_at(seed: i32, x: i32, z: i32) -> f64 {
+    let dx = f64(x) - 11.5
+    let dz = f64(z) - 11.5
+    let distance = dx * dx + dz * dz
+    let noise = f64(hash(seed, x / 2, z / 2) % 7u32) * 0.28
+    if distance < 30.0 { return 2.0 + noise }
+    if distance < 53.0 { return 4.5 + noise }
+    if distance < 92.0 { return 6.0 + noise }
+    if distance < 125.0 { return 4.5 + noise }
+    return 3.0 + noise
+}
+
+fn cell_index(world: Survey, x: i32, y: i32, z: i32) -> i32 {
+    return (y * world.depth + z) * world.width + x
+}
+
+fn inside(world: Survey, x: i32, y: i32, z: i32) -> bool {
+    return x >= 0 && x < world.width && y >= 0 && y < world.height && z >= 0 && z < world.depth
+}
+
+export fn block_at(world: Survey, x: i32, y: i32, z: i32) -> i32 {
+    if !inside(world, x, y, z) { return 0 }
+    return world.blocks[cell_index(world, x, y, z)]
+}
+
+export fn set_block(world: Survey, x: i32, y: i32, z: i32, material: i32) -> bool {
+    if !inside(world, x, y, z) || material < 0 || material > 4 { return false }
+    let index = cell_index(world, x, y, z)
+    if world.blocks[index] == material { return false }
+    world.blocks[index] = material
+    return true
+}
+
+export fn generate(world: Survey, seed: i32) {
+    for z in 0 .. world.depth {
+        for x in 0 .. world.width {
+            let top = i32(height_at(seed, x, z))
+            let mineral = hash(seed, x, z) % 100u32
+            for y in 0 .. world.height {
+                var material = 0
+                if y < top { material = 1 }
+                if y == top {
+                    if top <= 3 { material = 2 }
+                    else { material = 3 }
+                }
+                if y == top + 1 && mineral < 5u32 { material = 4 }
+                if y == top + 2 && mineral < 1u32 { material = 4 }
+                world.blocks[cell_index(world, x, y, z)] = material
+            }
+        }
+    }
+}
+
+fn face(world: Survey, x: i32, y: i32, z: i32, side: i32, material: i32) {
+    let start = world.face_count * 5
+    world.faces[start] = x
+    world.faces[start + 1] = y
+    world.faces[start + 2] = z
+    world.faces[start + 3] = side
+    world.faces[start + 4] = material
+    world.face_count = world.face_count + 1
+}
+
+export fn rebuild(world: Survey) -> i32 {
+    world.face_count = 0
+    for y in 0 .. world.height {
+        for z in 0 .. world.depth {
+            for x in 0 .. world.width {
+                let material = world.blocks[cell_index(world, x, y, z)]
+                if material == 0 { continue }
+                if block_at(world, x, y + 1, z) == 0 { face(world, x, y, z, 0, material) }
+                if block_at(world, x + 1, y, z) == 0 { face(world, x, y, z, 1, material) }
+                if block_at(world, x - 1, y, z) == 0 { face(world, x, y, z, 2, material) }
+                if block_at(world, x, y, z + 1) == 0 { face(world, x, y, z, 3, material) }
+                if block_at(world, x, y, z - 1) == 0 { face(world, x, y, z, 4, material) }
+                if y > 0 && block_at(world, x, y - 1, z) == 0 { face(world, x, y, z, 5, material) }
+            }
+        }
+    }
+    changed(world.face_count)
+    return world.face_count
+}
+
+export fn faces(world: Survey) -> [i32] {
+    return world.faces
+}

@@ -1,0 +1,4 @@
+/.codex-attachments/
+/artifacts/
+*.wasm
+!/docs/terrain.wasm

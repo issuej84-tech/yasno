@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#191d25">
+  <title>Кальдера · Yasno</title>
+  <link rel="stylesheet" href="./survey.css">
+  <script type="module" src="./survey.mjs"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="context">Воксельная лаборатория Yasno</p>
+        <h1>Кальдера</h1>
+      </div>
+      <form id="seed-form">
+        <label for="seed">Ключ карты</label>
+        <div class="seed-control">
+          <input id="seed" name="seed" type="number" min="-2147483648" max="2147483647" step="1" required value="408" disabled>
+          <button id="generate" type="submit" disabled>Создать карту</button>
+        </div>
+      </form>
+    </header>
+    <section class="workspace" aria-label="Воксельный редактор">
+      <div class="viewport">
+        <div class="view-controls" role="group" aria-label="Поворот карты">
+          <button id="rotate-left" type="button" title="Повернуть влево" aria-label="Повернуть влево" disabled>↶</button>
+          <button id="rotate-right" type="button" title="Повернуть вправо" aria-label="Повернуть вправо" disabled>↷</button>
+        </div>
+        <canvas id="map" aria-label="Карта кальдеры. Щёлкните по грани блока для редактирования."></canvas>
+        <span class="extent">24 × 14 × 24</span>
+      </div>
+      <aside>
+        <h2>Инструменты</h2>
+        <div class="tools" role="group" aria-label="Режим редактирования">
+          <button id="remove" type="button" aria-pressed="true" disabled>Убрать</button>
+          <button id="place" type="button" aria-pressed="false" disabled>Поставить</button>
+        </div>
+        <fieldset id="materials" disabled>
+          <legend>Материал</legend>
+          <label><input type="radio" name="material" value="1"><span class="swatch slate"></span>Сланец</label>
+          <label><input type="radio" name="material" value="2"><span class="swatch moss"></span>Лишайник</label>
+          <label><input type="radio" name="material" value="3" checked><span class="swatch ochre"></span>Охра</label>
+          <label><input type="radio" name="material" value="4"><span class="swatch quartz"></span>Кварц</label>
+        </fieldset>
+        <div class="details">
+          <span>Внешние грани</span>
+          <output id="face-count">—</output>
+        </div>
+        <p id="status" role="status">Загружается карта…</p>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
