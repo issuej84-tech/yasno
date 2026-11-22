@@ -1,0 +1,5 @@
+extern "env" "yasno_energy" fn energy(mass: f64, speed: f64) -> f64
+
+export fn kilojoules(mass: f64, speed: f64) -> f64 {
+    return energy(mass, speed) / 1000.0
+}

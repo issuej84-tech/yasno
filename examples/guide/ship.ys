@@ -1,0 +1,15 @@
+struct Ship { speed: f64 }
+
+fn boost(ship: Ship, delta: f64) {
+    ship.speed = ship.speed + delta
+}
+
+export fn simulate() -> f64 {
+    let ship = Ship(7.5)
+    boost(ship, 5.0)
+    return ship.speed
+}
+
+fn main() {
+    print(simulate())
+}

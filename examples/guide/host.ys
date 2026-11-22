@@ -1,0 +1,12 @@
+extern "sim" "delta" fn read_delta() -> f64
+extern "sim" "report" fn report(speed: f64)
+
+export fn tick(speed: f64) -> f64 {
+    let next = speed + read_delta()
+    report(next)
+    return next
+}
+
+fn main() {
+    tick(7.5)
+}

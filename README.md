@@ -2,6 +2,8 @@
 
 Yasno — статически типизированный язык для вычислений и игровой логики. Компилятор выдаёт WebAssembly. Для сборки и запуска примеров достаточно Node.js. [Спецификация WebAssembly](https://www.w3.org/TR/wasm-core/)
 
+**[Документация Yasno](guide/README.md)** · [Быстрый старт](guide/start.md) · [Справочник языка](guide/language.md) · [WebAssembly и JavaScript](guide/wasm.md) · [Рабочие примеры](examples/guide)
+
 ```text
 fn main() {
     var total = 0
